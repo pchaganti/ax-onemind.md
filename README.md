@@ -1,8 +1,8 @@
-# onemind.md
+# ONEMIND.md
 
 **Give your repo a memory.**
 
-Most projects forget everything between sessions — decisions, rejected ideas, context. onemind.md fixes that. It's a single file you drop into any git repo, and suddenly your project remembers: why you chose X over Y, what you tried and abandoned, what you learned.
+Most projects forget everything between sessions — decisions, rejected ideas, context. ONEMIND.md fixes that. It's a single file you drop into any git repo, and suddenly your project remembers: why you chose X over Y, what you tried and abandoned, what you learned.
 
 No database. No service. No new dependencies. Just git.
 
@@ -18,7 +18,7 @@ No database. No service. No new dependencies. Just git.
 
 ### 1. Copy the file
 
-Drop `onemind.md` into your repo root. That's the spec — it tells your AI agents how to use the mind.
+Drop `ONEMIND.md` into your repo root. That's the spec — it tells your AI agents how to use the mind.
 
 ### 2. Tell your agents
 
@@ -76,7 +76,7 @@ Decision: accepted
 Confidence: high
 ```
 
-Read the full spec in [`onemind.md`](onemind.md) for all the details — threads, notes, ADR templates, sync, multi-person workflows.
+Read the full spec in [`ONEMIND.md`](ONEMIND.md) for all the details — threads, notes, ADR templates, sync, multi-person workflows.
 
 ## Syncing
 
