@@ -24,6 +24,12 @@ curl -sO https://raw.githubusercontent.com/lazardanlucian/onemind.md/main/ONEMIN
 
 That drops the spec into your repo. Tell your agent to read it.
 
+## Pruning
+
+Set a size limit in `AGENTS.md` (default 1GB). Agents check at session start and prune stale thoughts
+(`Status: dead`, `Status: deprecated`, old observations) when the mind grows past threshold.
+Pruned commits become unreachable; `git gc` reclaims the space. 90-day reflog safety net.
+
 ## How it auto-bootstraps
 
 When your agent first reads `ONEMIND.md`, it checks whether the mind exists. If not, it initializes it — one git command, no files on disk, no config changes. From that point on, every session starts by reading the mind and ends by recording what was learned.
@@ -90,12 +96,6 @@ git fetch origin refs/mind/main:refs/mind/main  # pull the mind
 ```
 
 The mind lives on the same remote as your code. CI pipelines should ignore `refs/mind/*`, so pushing the mind should not trigger a build, etc.
-
-## Pruning
-
-Set a size limit in `AGENTS.md` (default 1GB). Agents check at session start and prune stale thoughts
-(`Status: dead`, `Status: deprecated`, old observations) when the mind grows past threshold.
-Pruned commits become unreachable; `git gc` reclaims the space. 90-day reflog safety net.
 
 ## Safety
 - ONEMIND.md instructs agents not to save PII/TOKENS, sensitive data in the mind.
