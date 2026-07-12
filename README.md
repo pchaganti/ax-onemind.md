@@ -91,6 +91,12 @@ git fetch origin refs/mind/main:refs/mind/main  # pull the mind
 
 The mind lives on the same remote as your code. CI pipelines should ignore `refs/mind/*`, so pushing the mind should not trigger a build, etc.
 
+## Pruning
+
+Set a size limit in `AGENTS.md` (default 1GB). Agents check at session start and prune stale thoughts
+(`Status: dead`, `Status: deprecated`, old observations) when the mind grows past threshold.
+Pruned commits become unreachable; `git gc` reclaims the space. 90-day reflog safety net.
+
 ## Safety
 - ONEMIND.md instructs agents not to save PII/TOKENS, sensitive data in the mind.
 - Nothing leaks into your working tree — no `mind/` folder, no `.gitignore` edits.

@@ -245,6 +245,75 @@ ignores `refs/mind/*`, so pushing the mind never kicks off a build.
   tool for revising understanding — annotate, don't rewrite.
 - Prefer appending over overwriting; preserve history.
 
+## Pruning (keep the mind healthy)
+
+The mind grows with every thought. To prevent unbounded growth, agents can prune stale thoughts.
+Pruned commits become unreachable; `git gc` reclaims the space.
+
+### Configuration
+
+Add a size limit to your repo's `AGENTS.md` linker line:
+```
+This project's learning memory is an in-repo git mind on `refs/mind/main`
+— read `ONEMIND.md` and follow its protocol. ONEMIND.md LIMIT 1GB
+```
+
+The agent uses this as the soft cap. If omitted, the default is **1GB**.
+
+### When to check
+
+At session start, after reading the mind:
+1. Run `git count-objects -vH` to get current mind size.
+2. Compare against the last recorded size (stored in a thought trailer `MindSize: <bytes>`).
+3. If growth since last prune exceeds **10MB** (or 10% of limit, whichever is smaller), run a prune.
+4. If no `MindSize:` trailer exists yet, treat current size as baseline and skip pruning this session.
+
+This avoids per-session overhead — pruning only fires when the mind has grown meaningfully.
+
+### What's prunable
+
+Priority order (most to least prunable):
+1. **Status: dead** — rejected ideas, abandoned approaches
+2. **Status: deprecated** — superseded decisions
+3. **Old observations** — insights without `Decision:` or `Status: accepted` trailers, older than 30 days
+4. **Status: accepted decisions** — last to be pruned; only if truly necessary
+
+**Never prune:**
+- The init commit (`Tags: meta, bootstrap`)
+- Annotated tags (milestones)
+- Thoughts with `Keep: true` trailer
+
+### How to prune
+
+Skip the pruned commits by re-pointing the ref to a new chain that excludes them:
+
+```
+# For each prunable commit (oldest first):
+# 1. Get its parent
+PARENT=$(git rev-parse <pruned-sha>^)
+
+# 2. Create new commit with same tree, parent becomes grandparent
+NEW=$(git commit-tree "$(git rev-parse <pruned-sha>^{tree})" \
+        -p "$PARENT" -m "mind: prune — original: <first-line-of-pruned>")
+
+# 3. If this commit was HEAD of mind, update ref
+git update-ref refs/mind/main "$NEW"
+```
+
+After pruning, run `git gc` to reclaim space from unreachable commits:
+```
+git gc --prune=now
+```
+
+The pruned thoughts are gone. If you need them later, `git reflog` preserves unreachable commits
+for 90 days by default.
+
+### Transparency
+
+- If **>10% of mind size** is pruned, announce: *"Pruned mind: removed N thoughts, freed XKB."*
+- If under 10%, prune silently.
+- Always record a `MindSize: <bytes>` trailer on the post-prune commit for future threshold checks.
+
 ## Linker for agents (optional)
 Add one line to the repo's `AGENTS.md` so any agent working there uses the mind:
 > This project's learning memory is an in-repo git mind on `refs/mind/main` — read `ONEMIND.md` and
