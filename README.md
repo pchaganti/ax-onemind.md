@@ -1,13 +1,21 @@
 # ONEMIND.md
 
-**Give your repo a memory.**
+**A protocol that gives your repo infinite memory — using only git.**
 
-Most projects forget everything between sessions — decisions, rejected ideas, context. ONEMIND.md fixes that by providing a convention for agents to store decision, memories, contexts in git refs. It's a small file you drop into any git repo, and your project has the ability to contextually remember: why agents chose X over Y, what agents tried and abandoned, what agents learned.
-The mind is NOT storing data in a context file!
+Most projects forget everything between sessions — decisions, rejected ideas, context. ONEMIND.md is a spec you drop into any repo that teaches your agent how to store memories as git objects on a hidden ref. The file itself is ~250 lines of instructions. The memory it creates is infinite — it lives in `refs/mind/main`, not in a context window.
 
 No database. No service. No new dependencies. Just git.
 
 ![example](example.gif)
+
+## What this is NOT
+
+This is **not** a context file. You don't load it into your prompt each session. It's a protocol —
+instructions that tell your agent how to use git refs as persistent memory. The file stays small
+and static. The memory it creates is infinite and lives entirely in `refs/mind/main`.
+
+- A context file: static, bloats your prompt, loses relevance
+- ONEMIND.md: a stable spec. The memory grows in git, not in your context window
 
 ## Why you'd want this
 
