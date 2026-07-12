@@ -27,24 +27,9 @@ and static. The memory it creates is infinite and lives entirely in `refs/mind/m
 
 ## Try it now
 
-**Option A — Let your agent do it:**
-
 Tell your agent:
-> Implement https://raw.githubusercontent.com/lazardanlucian/onemind.md/main/ONEMIND.md
 
-The agent will fetch the spec, add the linker to `AGENTS.md`, and initialize the mind.
-
-**Option B — Download it yourself:**
-
-```sh
-curl -sO https://raw.githubusercontent.com/lazardanlucian/onemind.md/main/ONEMIND.md
-```
-
-Then add this line to your `AGENTS.md`:
-```
-This project's learning memory is an in-repo git mind on `refs/mind/main`
-— read `ONEMIND.md` and follow its protocol.
-```
+> Implement github.com/lazardanlucian/onemind.md
 
 ## Pruning
 
@@ -125,4 +110,3 @@ The mind lives on the same remote as your code. CI pipelines should ignore `refs
 - Never commit secrets, tokens, or PII to the mind.
 - Append only. Use `git notes` to correct past thoughts without rewriting history.
 
-![the reasons](reasons.jpg)
