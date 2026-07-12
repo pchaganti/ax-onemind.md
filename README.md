@@ -124,3 +124,5 @@ The mind lives on the same remote as your code. CI pipelines should ignore `refs
 - Nothing leaks into your working tree — no `mind/` folder, no `.gitignore` edits.
 - Never commit secrets, tokens, or PII to the mind.
 - Append only. Use `git notes` to correct past thoughts without rewriting history.
+
+![the reasons](reasons.jpg)
