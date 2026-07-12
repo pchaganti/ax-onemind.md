@@ -100,6 +100,8 @@ an actual git branch only for exploring something you might throw away. Do **not
 thought.
 
 ## Usage
+0. **First read — initialize if needed:** if `git rev-parse refs/mind/main` fails, the mind
+   doesn't exist yet. Run the setup commands in "Setup in a repo" below, then proceed.
 1. **Session start:** read this file, then `git log -5 refs/mind/main`, `git tag -n`, and optionally
    `git ls-tree -r refs/mind/main --name-only` (lists any blob thoughts). Open with a short recap.
 2. **Remember by committing:** write a message-only or blob thought and commit it to the mind ref

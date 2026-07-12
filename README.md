@@ -14,6 +14,14 @@ No database. No service. No new dependencies. Just git.
 - **Decisions with reasoning**, not just code diffs.
 - It travels with the repo. Clone it, you get the mind. Delete it, the mind goes with it.
 
+## Try it now
+
+```sh
+curl -sO https://raw.githubusercontent.com/lazardanlucian/onemind.md/main/ONEMIND.md
+```
+
+That drops the spec into your repo. Tell your agent to read it.
+
 ## Adopt in 2 steps
 
 ### 1. Copy the file
@@ -26,7 +34,7 @@ Add this one line to your repo's `AGENTS.md` (or equivalent):
 
 ```
 This project's learning memory is an in-repo git mind on `refs/mind/main`
-— read `onemind.md` and follow its protocol.
+— read `ONEMIND.md` and follow its protocol.
 ```
 
 That's it. On its next session, your agent will read the spec, see the mind needs initializing, and set it up automatically. No manual git commands required — the agent handles all the plumbing.
