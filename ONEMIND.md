@@ -3,7 +3,7 @@
 **A one-file convention that gives your project a memory, using only git.**
 
 No extra database. No extra service. No extra keys. No extra software to install or keep alive. And **no
-working-directory files**: every thought lives only as a git object on a hidden ref
+working-directory clutter**: every thought lives only as git objects on a hidden ref
 (`refs/mind/main`), written through plumbing. `git status` of your code repo never shows the mind.
 
 ## Why this exists
@@ -21,7 +21,7 @@ separated from the code it explains.
 - **Full history + diff + blame** on your thinking, for free, by a tool you already trust.
 - **Portable & lock-in-free.** It's plain git; anyone can read it, any agent can use it, nothing
   phones home.
-- **Out of your way.** The mind is pure git metadata — no `mind/` folder, no helper script.
+- **Out of your way.** The mind lives in git's object store — no `mind/` folder, no helper script.
 
 - Thoughts are git objects on `refs/mind/main`, created entirely via
   plumbing (`hash-object`, `commit-tree`, `update-ref`). No `.mind/`, no `mind/`
@@ -45,6 +45,36 @@ unchanged. Best for notes, decisions, realizations. Leaves your working director
 code commits are never touched. (Multi-person works fine — it's just a shared ref; CI won't fire on
 `refs/mind/*` pushes since those aren't `refs/heads/*` or tags.)
 
+## Index refs — instant lookups
+
+The mind ref `refs/mind/main` is a linked list. To avoid scanning history for the latest thought or
+a specific topic, maintain lightweight index refs:
+
+```
+# On every write, update HEAD:
+git update-ref refs/mind/HEAD "$NEW"
+
+# Per-topic index (optional — agent maintains):
+git update-ref refs/mind/topics/<topic-name> "$NEW"
+```
+
+**Queries:**
+```
+# Latest thought (O(1)):
+git rev-parse refs/mind/HEAD
+
+# List all topics:
+git for-each-ref --format='%(refname:short)' refs/mind/topics/
+
+# Latest N thoughts by date:
+git for-each-ref --sort=-committerdate --count=N refs/mind/
+
+# Topic lookup:
+git rev-parse refs/mind/topics/authentication
+```
+
+All commands are identical on bash, Git Bash, macOS, Linux, and PowerShell.
+
 ## Structure lives in git, not in folders
 **Commit trailers (the metadata layer).** End a commit message with key-value trailers (same
 mechanism as `Signed-off-by:`). Gives thoughts machine-readable structure with zero file schema.
@@ -54,20 +84,65 @@ Suggested vocabulary (all optional): `Tags:`, `Idea:`, `Decision:`, `Status:`
 Recall by trailer via grep (see below). Note: `git log --format='%(trailers:key=Tags)'` only renders
 whitelisted trailer keys by default, so use `git log --grep` for custom keys like `Tags:`/`Status:`.
 
-**git notes (annotate the past without falsifying it).** Correct a past decision *on* its original
-commit, without rewriting it:
+**git notes (annotate the past without falsifying it).** Attach metadata to any thought commit
+without rewriting it. Notes live in `refs/notes/*`, separate from the mind ref.
+
 ```
-git notes add -m "Superseded by a1b2c3d — shipped photos-stripped, risk lower than feared." <sha>
-git log --show-notes refs/mind/main
+# Add a note to a specific thought:
+git notes add -m "confidence: high" <sha>
+
+# Append to an existing note:
+git notes append -m "context: discovered during auth refactor" <sha>
+
+# Use a custom namespace for structured metadata:
+git notes --ref=refs/notes/learnings add -m "key insight" <sha>
+
+# View notes in log:
+git log --show-notes=refs/notes/learnings refs/mind/main
+
+# View a single note:
+git notes show <sha>
+
+# Share notes with remote:
+git push origin refs/notes/learnings
 ```
 
+Notes are useful for: confidence scores, corrections, context added after the fact, review comments.
+They don't alter the commit hash, so they never break references.
+
+**git replace (alternative versions).** Create a "corrected" version of a thought that transparently
+replaces it in `git log` / `git show`, while preserving the original in the object database:
+
+```
+# Create corrected commit:
+NEW=$(git commit-tree "$(git rev-parse refs/mind/main^{tree})" \
+    -p "$(git rev-parse <original>^)" -m "mind: corrected — <summary>...")
+
+# Wire up replacement (transparent to log/show):
+git replace <original> "$NEW"
+
+# List all replacements:
+git replace -l
+
+# Remove a replacement:
+git replace -d <original>
+```
+
+Use for: correcting a past decision while keeping the original available via `--no-replace-objects`.
+Do not use for routine annotations — prefer `git notes` for that.
+
 ## Recall (all plain git, all on the mind ref)
-1. **Thought log / text in messages:** `git log --grep="<term>" -i refs/mind/main`
-2. **Change-aware (pickaxe):** `git log -S"<string>" refs/mind/main` (when a term appeared/left);
+1. **Text search:** `git log --grep="<term>" -i refs/mind/main`
+2. **Pickaxe (content change):** `git log -S"<string>" refs/mind/main` (when a term appeared/left);
    `git log -G"<regex>" refs/mind/main` (diffs touching a pattern).
 3. **By milestone:** `git tag -n` (annotated tags only), `git describe`.
-4. **Follow the graph:** `Related:` SHA trailers; `git log --grep="Thread: <name>" refs/mind/main`
-   reconstructs a thread (prefer a `Thread:` trailer over a branch).
+4. **Index ref lookup:** `git rev-parse refs/mind/HEAD` (latest), `git rev-parse refs/mind/topics/<name>`.
+5. **Structured query:** `git for-each-ref --sort=-committerdate --count=N refs/mind/` for recent
+   thoughts across all index refs.
+6. **Thread reconstruction:** `git log --grep="Thread: <name>" refs/mind/main` or follow `Related:`
+   SHA trailers.
+7. **Visualize the graph:** `git log --graph --oneline --decorate refs/mind/main` to see the
+   thought chain visually. With threads (branching thought lines), the graph shows divergence points.
 
 ## Threads (use sparingly — the mind ref is the default)
 A "thread" is a sustained line of thinking. Tag a series of commits with a shared `Thread: <name>`
@@ -78,11 +153,13 @@ thought.
 ## Usage
 0. **First read — initialize if needed:** if `git rev-parse refs/mind/main` fails, the mind
    doesn't exist yet. Run the setup commands in "Setup in a repo" below, then proceed.
-1. **Session start:** read this file, then `git log -5 refs/mind/main` and `git tag -n`. Open with a
-   short recap.
-2. **Remember by committing:** write a thought and commit it to the mind ref
-   with a clear message + trailers (commands below).
-3. **Recall before deciding:** run the recall commands so you build on prior learning.
+1. **Session start:** read this file, then run the four recap commands below. Open with a short
+   summary of what's on your mind. If the user's first message relates to something recorded,
+   surface it immediately.
+2. **Remember by committing:** when something worth recording happens (see "What's worth
+   recording"), write it. Don't batch — write the moment it happens.
+3. **Recall before deciding:** search the mind before implementing features, making design
+   choices, or answering questions that might have prior context.
 4. **Correct with notes:** `git notes add` on the original commit rather than rewriting.
 5. **Tag milestones** (annotated) when reached.
 6. **Keep current:** append, don't overwrite; preserve history.
@@ -95,17 +172,54 @@ thought.
 Commit with matching trailers (`Decision:`, `Status:`, `Tags:`) so it's queryable.
 
 ### Always-on & transparent
-The mind is **always on** — consult it before deciding/recalling, and **write the moment something
-is learned**. Tell the user when you read from / write to the mind ("From mind: …" / "Recording to
-mind: …"). The user should never be surprised the mind was used.
+The mind is **always on**. It's already initialized and sitting in the repo — treat it like you'd
+treat a project's README: something you naturally consult and update as part of working on the code.
+Don't wait to be asked to use it.
+
+**When to read (before acting):**
+- Before implementing a feature → `git log --grep="Feature:" -i refs/mind/main`
+- Before making a design decision → check if it was decided before
+- When the user mentions something that sounds familiar → search for prior discussion
+- At session start → always (the four commands in the recap below)
+
+**When to write (the moment it happens):**
+- The user answers a clarifying question → their answer is a decision, record it
+- You discover something non-obvious about the codebase → it's worth remembering
+- An approach fails and you pivot → log what didn't work and why
+- The user states a preference, constraint, or goal → save it for future sessions
+- A bug is found and fixed → record the root cause, not just the fix
+- You ask the user "A or B?" and they choose → that's a decision with context
+- You finish a task and the result surprised you → the surprise is the insight
+
+**Transparency:** Tell the user when you read from / write to the mind ("From mind: …" / "Recording
+to mind: …"). The user should never be surprised the mind was used. But don't ask permission —
+just do it, the same way you'd silently check a file before editing it.
+
+### What's worth recording
+
+Not everything is worth a thought. Record when something would help a **future session** (which
+might be you, next week) avoid re-discovering or re-asking:
+
+- **Decisions** — "we chose X over Y because Z" (with trailers: `Decision:`, `Status:`, `Tags:`)
+- **User preferences** — "user prefers simple over clever", "user wants minimal dependencies"
+- **Rejections** — "tried approach X, failed because Y" (prevents re-litigating dead ends)
+- **Non-obvious findings** — "the auth module expects X but docs say Y"
+- **Context the user gave** — answers to your questions are gold; they save future back-and-forth
+- **Scope/Goals** — "user wants to ship MVP first, optimize later"
+- **Milestones** — tag when something ships or a phase completes
+
+Skip: routine progress ("fixing typo"), mechanical steps ("ran tests"), or anything that's just
+normal code changes. The mind stores *reasoning and context*, not a changelog.
 
 ### Session-start recap
 ```
 === What's on my mind ===
+Latest thought:    git rev-parse refs/mind/HEAD
 Recent thoughts:  git log -5 refs/mind/main
+Topics:           git for-each-ref --format='%(refname:short)' refs/mind/topics/
 Milestones:       git tag -n
 ```
-That's just `git log -5 refs/mind/main` + `git tag -n` — no tooling required.
+That's just four git commands — no tooling required.
 
 ## Setup in a repo (one time, plain git)
 
@@ -115,6 +229,7 @@ git update-ref refs/mind/main "$(git commit-tree "$(git mktree </dev/null)" -m '
 
 Tags: meta, bootstrap
 Status: accepted')"
+git update-ref refs/mind/HEAD "$(git rev-parse refs/mind/main)"
 ```
 
 **PowerShell (Windows) — `git mktree` doesn't accept piped empty input on PS:**
@@ -132,6 +247,7 @@ $f = "$env:TEMP\mind_init_msg.txt"
 $sha = git commit-tree $tree -F $f
 Remove-Item $f
 git update-ref refs/mind/main $sha
+git update-ref refs/mind/HEAD $sha
 ```
 
 That's the whole "install." Nothing is written to your working directory. (This file, `ONEMIND.md`,
@@ -149,6 +265,7 @@ Tags: ...
 Status: ...
 Idea: ...")
 git update-ref refs/mind/main "$NEW"
+git update-ref refs/mind/HEAD "$NEW"       # keep index current
 ```
 
 Leaves your working directory and `main`/`master` completely untouched.
@@ -168,11 +285,36 @@ Leaves your working directory and `main`/`master` completely untouched.
 > $NEW = git commit-tree $tree -p $parent -F $f
 > Remove-Item $f
 > git update-ref refs/mind/main $NEW
+> git update-ref refs/mind/HEAD $NEW       # keep index current
 > ```
 
 > Optional human convenience only (not part of the spec): a shell alias for recall,
 > `mind-recall(){ git log --oneline refs/mind/main --grep="$1" -i; }`.
 > The mind works with raw git; the alias is sugar for your terminal.
+
+## Cross-platform command reference
+
+All git plumbing commands are identical across platforms. Only shell syntax differs.
+
+| Operation | Bash / sh | PowerShell |
+|---|---|---|
+| Create blob | `echo "text" \| git hash-object -w --stdin` | `"text" \| git hash-object -w --stdin` |
+| Create tree | `echo "100644 blob <sha>    f.txt" \| git mktree` | same |
+| Commit from tree | `git commit-tree <tree> -m "msg"` | same |
+| Update ref | `git update-ref refs/mind/main <sha>` | same |
+| Read ref | `git rev-parse refs/mind/main` | same |
+| List refs | `git for-each-ref refs/mind/` | same |
+| Add note | `git notes add -m "text" <sha>` | same |
+| Show note | `git notes show <sha>` | same |
+| Verify pack | `git verify-pack -v .git/objects/pack/*.idx` | `git verify-pack -v (Get-ChildItem .git\objects\pack\*.idx)[0].FullName` |
+| Count objects | `git count-objects -vH` | same |
+| GC | `git gc --prune=now` | same |
+
+**Shell-specific differences:**
+- Variable assignment: `VAR=value` (bash) vs `$var = "value"` (PS)
+- Temp files: `$(mktemp)` (bash) vs `"$env:TEMP\file.txt"` (PS)
+- Write file without BOM: `[System.IO.File]::WriteAllText($path, $text, [System.Text.UTF8Encoding]::new($false))` (PS)
+- Pipe to stdin: `echo "text" | cmd` (bash) vs `"text" | cmd` (PS)
 
 ## Multi-person
 It's a shared ref. Everyone fetches, commits (plumbing), and pushes it. If two people push
@@ -184,14 +326,38 @@ It's a shared ref. Everyone fetches, commits (plumbing), and pushes it. If two p
 Single remote, single `git push`:
 ```
 git push origin refs/mind/main                 # the mind, on the same repo's upstream
-git push origin 'refs/notes/*'                 # if you use notes for corrections
+git push origin refs/mind/HEAD                 # latest-thought index
+git push origin 'refs/mind/topics/*'           # topic indexes (if used)
+git push origin 'refs/notes/*'                 # notes metadata
 ```
-Pull: `git fetch origin refs/mind/main:refs/mind/main`. CI triggered on `refs/heads/*` / tags
-ignores `refs/mind/*`, so pushing the mind never kicks off a build.
+Pull: `git fetch origin refs/mind/main:refs/mind/main refs/mind/HEAD:refs/mind/HEAD`.
+CI triggered on `refs/heads/*` / tags ignores `refs/mind/*`, so pushing the mind never kicks off a build.
+
+## Export / import (single-file portability)
+
+Bundle the mind as a single file for backup, sharing, or transfer:
+
+```
+# Export the mind:
+git bundle create mind-export.bundle refs/mind/main
+
+# Include notes too:
+git bundle create mind-full.bundle refs/mind/main refs/notes/*
+
+# Import on another machine:
+git fetch mind-export.bundle refs/mind/main:refs/mind/main
+
+# Verify a bundle:
+git bundle verify mind-export.bundle
+```
+
+Bundles preserve full git history, objects, and refs. They're useful for offline transfer, backups,
+or sharing mind state without pushing to a remote.
 
 ## Safety bounds
-- The mind is invisible on disk; there is no `mind/` folder to leak into code commits. Keep all mind
-  commands scoped to `refs/mind/main`; never run them against `HEAD`/`main`/`master`.
+- The mind lives in git's object store, not in working-directory files; there is no `mind/` folder to
+  leak into code commits. Keep all mind commands scoped to `refs/mind/main` (and its sub-refs);
+  never run them against `HEAD`/`main`/`master`.
 - **Never commit PII, tokens, keys, credentials, or sensitive data** to the mind ref.
 - Do not force-push or rewrite shared mind history unless explicitly instructed. `git notes` is the
   tool for revising understanding — annotate, don't rewrite.
@@ -256,6 +422,24 @@ After pruning, run `git gc` to reclaim space from unreachable commits:
 ```
 git gc --prune=now
 ```
+
+### Pack health
+
+After pruning (or periodically), verify pack integrity:
+
+```
+# Check pack file health:
+git verify-pack -v .git/objects/pack/pack-*.idx
+
+# Check object count and size:
+git count-objects -vH
+
+# Force optimal repack (if pack reports issues):
+git repack -a -d --window=250 --depth=50
+```
+
+Healthy signs: chain length 0-5, compressed size < uncompressed size. If `verify-pack` reports "bad",
+run `git repack -a -d` to recreate the pack.
 
 The pruned thoughts are gone. If you need them later, `git reflog` preserves unreachable commits
 for 90 days by default.
