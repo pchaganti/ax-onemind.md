@@ -4,7 +4,7 @@
 
 Most projects forget everything between sessions — decisions, rejected ideas, context. ONEMIND.md is a spec you drop into any repo that teaches your agent how to store memories as git objects on a hidden ref. The file itself is ~250 lines of instructions. The memory it creates is infinite — it lives in `refs/mind/main`, not in a context window.
 
-No database. No service. No new dependencies. Just git.
+No extra database. No extra service. No new dependencies. Just git.
 
 ## Try it now
 
