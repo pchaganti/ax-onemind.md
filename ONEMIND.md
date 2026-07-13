@@ -2,7 +2,7 @@
 
 **A one-file convention that gives your project a memory, using only git.**
 
-No database. No service. No API key. No extra software to install or keep alive. And **no
+No extra database. No extra service. No extra keys. No extra software to install or keep alive. And **no
 working-directory files**: every thought lives only as a git object on a hidden ref
 (`refs/mind/main`), written through plumbing. `git status` of your code repo never shows the mind.
 
